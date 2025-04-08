@@ -392,7 +392,7 @@
 </head>
 <body>
   <div class="welcome-slider">
-    <button id="skip-button" class="skip-button">Skip</button>
+    <button id="skip-button" class="skip-button" onclick="mlConfirmButton.performClick()">Skip</button>
     
     <div class="progress-dots" id="progress-dots">
       <!-- Will be populated by JavaScript -->
@@ -404,14 +404,11 @@
     
     <div class="navigation-buttons">
       <button id="prev-button" class="nav-button prev-button" style="display: none;">Previous</button>
-      <button id="next-button" class="nav-button next-button full-width">Next</button>
+      <button id="next-button" class="nav-button next-button full-width" onclick="currentSlide === slides.length - 1 ? mlConfirmButton.performClick() : nextSlide()">Next</button>
     </div>
   </div>
 
-  <div id="toast" class="toast">
-    <div class="toast-title">Welcome to SmartShop!</div>
-    <div class="toast-description">Your account has been created successfully.</div>
-  </div>
+
 
   <script>
     // Slides data
@@ -452,7 +449,6 @@
     const prevButton = document.getElementById('prev-button');
     const nextButton = document.getElementById('next-button');
     const skipButton = document.getElementById('skip-button');
-    const toast = document.getElementById('toast');
 
     // State variables
     let currentSlide = 0;
@@ -511,7 +507,7 @@
             <div class="slide-actions" id="actions-${index}">
               <a href="#">Privacy Policy</a>
               <a href="#">Terms and Conditions</a>
-              <button class="button button-primary" style="margin-top: 16px;">
+              <button class="button button-primary" style="margin-top: 16px;" onclick="nativeFunctions.triggerTransparencyTracker()">
                 Accept Privacy and Terms
               </button>
             </div>
@@ -519,7 +515,7 @@
         } else if (slide.isNotifications) {
           slideContent += `
             <div class="slide-actions" id="actions-${index}">
-              <button class="button button-primary">
+              <button class="button button-primary" onclick="nativeFunctions.triggerPushPrompt()">
                 Enable Notifications
               </button>
             </div>
@@ -533,7 +529,7 @@
                   ${getSvgIcon('copy')}
                 </button>
               </div>
-              <button class="button button-primary" style="display: flex; align-items: center; gap: 8px;" id="get-started-button">
+              <button class="button button-primary" style="display: flex; align-items: center; gap: 8px;" id="get-started-button" onclick="mlConfirmButton.performClick()">
                 Get Started
                 ${getSvgIcon('arrow-right')}
               </button>
@@ -572,7 +568,7 @@
         currentSlide++;
         updateSlider();
       } else if (currentSlide === slides.length - 1) {
-        showToast();
+        handleGetStarted();
       }
     }
 
@@ -674,12 +670,11 @@
       if (actions) actions.classList.remove('active');
     }
 
-    // Show toast notification
-    function showToast() {
-      toast.classList.add('show');
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
+    // Handle Get Started click
+    function handleGetStarted() {
+      if (typeof mlConfirmButton !== 'undefined' && mlConfirmButton.performClick) {
+        mlConfirmButton.performClick();
+      }
     }
 
     // Handle copy coupon code
@@ -696,10 +691,6 @@
             copyButton.innerHTML = getSvgIcon('copy');
           }, 2000);
         });
-      }
-      
-      if (getStartedButton) {
-        getStartedButton.addEventListener('click', showToast);
       }
     }
 
