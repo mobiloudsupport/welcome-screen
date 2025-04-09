@@ -28,6 +28,11 @@
       outline: none;
     }
 
+    button:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
     .button {
       padding: 12px 20px;
       border-radius: 10px;
@@ -41,7 +46,7 @@
       color: white;
     }
 
-    .button-primary:hover {
+    .button-primary:hover:not(:disabled) {
       background-color: #0065e0;
       transform: scale(1.05);
     }
@@ -51,7 +56,7 @@
       color: #333;
     }
 
-    .button-ghost:hover {
+    .button-ghost:hover:not(:disabled) {
       background-color: rgba(0, 0, 0, 0.05);
     }
 
@@ -84,7 +89,7 @@
       font-size: 0.875rem;
     }
 
-    .skip-button:hover {
+    .skip-button:hover:not(:disabled) {
       color: #1f2937;
     }
 
@@ -110,14 +115,25 @@
       background-color: #0078ff;
     }
 
-    .progress-dot.inactive:hover {
+    .progress-dot.inactive:hover:not(:disabled) {
       background-color: #9ca3af;
     }
 
-    .slider-wrapper {
+    .progress-dot:disabled {
+      cursor: not-allowed;
+    }
+
+    .slider-container {
       flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .slider-wrapper {
       display: flex;
-      transition: transform 0.5s ease-out;
+      height: 100%;
+      transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: transform;
     }
 
     .slide {
@@ -291,7 +307,7 @@
       color: #374151;
     }
 
-    .prev-button:hover {
+    .prev-button:hover:not(:disabled) {
       background-color: #d1d5db;
     }
 
@@ -305,7 +321,7 @@
       width: 100%;
     }
 
-    .next-button:hover {
+    .next-button:hover:not(:disabled) {
       background-color: #0065e0;
     }
 
@@ -330,58 +346,6 @@
       }
     }
 
-    @keyframes fade-in {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Icon styles */
-    .icon {
-      width: 40px;
-      height: 40px;
-    }
-
-    /* Toast notification */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background-color: white;
-      color: #333;
-      padding: 16px;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      z-index: 100;
-      max-width: 350px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      transform: translateY(100px);
-      opacity: 0;
-      transition: all 0.3s ease;
-    }
-
-    .toast.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
-
-    .toast-title {
-      font-weight: 600;
-      font-size: 1rem;
-    }
-
-    .toast-description {
-      font-size: 0.875rem;
-      color: #555;
-    }
-
     /* Responsive adjustments */
     @media (min-width: 768px) {
       .slide-title {
@@ -392,23 +356,23 @@
 </head>
 <body>
   <div class="welcome-slider">
-    <button id="skip-button" class="skip-button" onclick="mlConfirmButton.performClick()">Skip</button>
+    <button id="skip-button" class="skip-button" onclick="skipToGetStarted()">Skip</button>
     
     <div class="progress-dots" id="progress-dots">
       <!-- Will be populated by JavaScript -->
     </div>
     
-    <div class="slider-wrapper" id="slider-wrapper">
-      <!-- Will be populated by JavaScript -->
+    <div class="slider-container">
+      <div class="slider-wrapper" id="slider-wrapper">
+        <!-- Will be populated by JavaScript -->
+      </div>
     </div>
     
     <div class="navigation-buttons">
       <button id="prev-button" class="nav-button prev-button" style="display: none;">Previous</button>
-      <button id="next-button" class="nav-button next-button full-width" onclick="currentSlide === slides.length - 1 ? mlConfirmButton.performClick() : nextSlide()">Next</button>
+      <button id="next-button" class="nav-button next-button full-width">Next</button>
     </div>
   </div>
-
-
 
   <script>
     // Slides data
@@ -452,6 +416,7 @@
 
     // State variables
     let currentSlide = 0;
+    let isTransitioning = false;
     let touchStartX = null;
     let touchEndX = null;
 
@@ -479,12 +444,27 @@
       }
     }
 
+    // Forward to the native confirm button
+    function callNativeConfirm() {
+      if (typeof mlConfirmButton !== 'undefined' && mlConfirmButton.performClick) {
+        mlConfirmButton.performClick();
+      } else {
+        console.log('Native confirm function not available');
+      }
+    }
+
+    // Skip directly to get started
+    function skipToGetStarted() {
+      callNativeConfirm();
+    }
+
     // Initialize slider content
     function initSlider() {
       // Create slides
       slides.forEach((slide, index) => {
         const slideElement = document.createElement('div');
         slideElement.className = 'slide';
+        slideElement.id = `slide-${index}`;
         
         // Generate slide content
         let slideContent = `
@@ -529,7 +509,7 @@
                   ${getSvgIcon('copy')}
                 </button>
               </div>
-              <button class="button button-primary" style="display: flex; align-items: center; gap: 8px;" id="get-started-button" onclick="mlConfirmButton.performClick()">
+              <button class="button button-primary" style="display: flex; align-items: center; gap: 8px;" onclick="callNativeConfirm()">
                 Get Started
                 ${getSvgIcon('arrow-right')}
               </button>
@@ -547,48 +527,108 @@
         const dot = document.createElement('button');
         dot.className = `progress-dot ${index === 0 ? 'active' : 'inactive'}`;
         dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
-        dot.addEventListener('click', () => goToSlide(index));
+        dot.setAttribute('data-slide', index);
+        dot.addEventListener('click', () => {
+          if (!isTransitioning) {
+            goToSlide(index);
+          }
+        });
         progressDots.appendChild(dot);
       });
 
-      // Activate the first slide
+      // Set up button handlers
+      nextButton.addEventListener('click', handleNextClick);
+      prevButton.addEventListener('click', handlePrevClick);
+      
+      // Set up touch events
+      sliderWrapper.addEventListener('touchstart', handleTouchStart);
+      sliderWrapper.addEventListener('touchmove', handleTouchMove);
+      sliderWrapper.addEventListener('touchend', handleTouchEnd);
+      
+      // Set up keyboard navigation
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Initialize copy button
+      setupCopyButton();
+      
+      // Activate first slide
       activateSlide(0);
     }
 
-    // Go to specific slide
-    function goToSlide(index) {
-      const direction = index > currentSlide ? 'right' : 'left';
-      currentSlide = index;
-      updateSlider();
-    }
-
-    // Next slide
-    function nextSlide() {
+    // Handle click on next button
+    function handleNextClick() {
+      if (isTransitioning) return;
+      
       if (currentSlide < slides.length - 1) {
-        currentSlide++;
-        updateSlider();
+        goToSlide(currentSlide + 1);
       } else if (currentSlide === slides.length - 1) {
-        handleGetStarted();
+        callNativeConfirm();
       }
     }
 
-    // Previous slide
-    function prevSlide() {
+    // Handle click on previous button
+    function handlePrevClick() {
+      if (isTransitioning) return;
+      
       if (currentSlide > 0) {
-        currentSlide--;
-        updateSlider();
+        goToSlide(currentSlide - 1);
       }
     }
 
-    // Skip to last slide
-    function skipToEnd() {
-      currentSlide = slides.length - 1;
-      updateSlider();
+    // Go to a specific slide
+    function goToSlide(index) {
+      if (index < 0 || index >= slides.length || index === currentSlide || isTransitioning) {
+        return;
+      }
+      
+      // Start transition
+      startTransition();
+      
+      // Set the current slide
+      currentSlide = index;
+      
+      // Update the UI
+      updateUI();
+      
+      // After animation completes
+      setTimeout(() => {
+        finishTransition();
+      }, 600);
     }
 
-    // Update slider based on current slide
-    function updateSlider() {
-      // Update slider transform
+    // Start transition - disable controls
+    function startTransition() {
+      isTransitioning = true;
+      
+      // Disable buttons during transition
+      nextButton.disabled = true;
+      prevButton.disabled = true;
+      skipButton.disabled = true;
+      
+      const dots = progressDots.querySelectorAll('.progress-dot');
+      dots.forEach(dot => {
+        dot.disabled = true;
+      });
+    }
+
+    // Finish transition - enable controls
+    function finishTransition() {
+      isTransitioning = false;
+      
+      // Re-enable buttons after transition
+      nextButton.disabled = false;
+      prevButton.disabled = false;
+      skipButton.disabled = false;
+      
+      const dots = progressDots.querySelectorAll('.progress-dot');
+      dots.forEach(dot => {
+        dot.disabled = false;
+      });
+    }
+
+    // Update UI based on current slide
+    function updateUI() {
+      // Update slider position
       sliderWrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
       
       // Update progress dots
@@ -616,10 +656,12 @@
       // Show/hide skip button
       skipButton.style.display = currentSlide < slides.length - 1 ? 'block' : 'none';
       
-      // Deactivate all slides first
-      slides.forEach((_, index) => {
-        deactivateSlide(index);
-      });
+      // Deactivate all slides
+      for (let i = 0; i < slides.length; i++) {
+        if (i !== currentSlide) {
+          deactivateSlide(i);
+        }
+      }
       
       // Activate current slide
       setTimeout(() => {
@@ -627,7 +669,7 @@
       }, 100);
     }
 
-    // Activate a slide's animations
+    // Activate a slide
     function activateSlide(index) {
       const animation = document.getElementById(`animation-${index}`);
       const pulse = document.getElementById(`pulse-${index}`);
@@ -653,7 +695,7 @@
       }, 700);
     }
 
-    // Deactivate a slide's animations
+    // Deactivate a slide
     function deactivateSlide(index) {
       const animation = document.getElementById(`animation-${index}`);
       const pulse = document.getElementById(`pulse-${index}`);
@@ -670,17 +712,9 @@
       if (actions) actions.classList.remove('active');
     }
 
-    // Handle Get Started click
-    function handleGetStarted() {
-      if (typeof mlConfirmButton !== 'undefined' && mlConfirmButton.performClick) {
-        mlConfirmButton.performClick();
-      }
-    }
-
-    // Handle copy coupon code
+    // Set up the copy coupon button
     function setupCopyButton() {
       const copyButton = document.getElementById('copy-button');
-      const getStartedButton = document.getElementById('get-started-button');
       
       if (copyButton) {
         copyButton.addEventListener('click', () => {
@@ -694,41 +728,43 @@
       }
     }
 
-    // Touch events for mobile swipe
+    // Handle touch start
     function handleTouchStart(e) {
+      if (isTransitioning) return;
       touchStartX = e.touches[0].clientX;
     }
 
+    // Handle touch move
     function handleTouchMove(e) {
-      if (!touchStartX) return;
+      if (!touchStartX || isTransitioning) return;
+      
       touchEndX = e.touches[0].clientX;
       const distance = touchStartX - touchEndX;
       
-      // Add resistance at the edges
+      // Limit drag at edges
       if ((currentSlide === 0 && distance < 0) || 
           (currentSlide === slides.length - 1 && distance > 0)) {
-        const maxDistance = 50;
-        const resistedDistance = Math.min(Math.abs(distance), maxDistance) * Math.sign(distance);
-        const translateX = -(currentSlide * 100) - (resistedDistance / window.innerWidth * 100);
-        sliderWrapper.style.transform = `translateX(${translateX}%)`;
+        // Apply resistance at the edges
+        const drag = distance * 0.2;
+        sliderWrapper.style.transform = `translateX(${-currentSlide * 100 - (drag / window.innerWidth * 100)}%)`;
       } else {
-        const translateX = -(currentSlide * 100) - (distance / window.innerWidth * 100);
-        sliderWrapper.style.transform = `translateX(${translateX}%)`;
+        sliderWrapper.style.transform = `translateX(${-currentSlide * 100 - (distance / window.innerWidth * 100)}%)`;
       }
     }
 
-    function handleTouchEnd() {
-      if (!touchStartX || !touchEndX) return;
+    // Handle touch end
+    function handleTouchEnd(e) {
+      if (!touchStartX || !touchEndX || isTransitioning) return;
       
       const distance = touchStartX - touchEndX;
-      const threshold = 50; // Minimum distance to trigger slide change
+      const threshold = 50; // Minimum swipe distance
       
       if (distance > threshold && currentSlide < slides.length - 1) {
-        nextSlide();
+        goToSlide(currentSlide + 1);
       } else if (distance < -threshold && currentSlide > 0) {
-        prevSlide();
+        goToSlide(currentSlide - 1);
       } else {
-        // Reset position if swipe wasn't strong enough
+        // Return to original position
         sliderWrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
       }
       
@@ -736,34 +772,19 @@
       touchEndX = null;
     }
 
-    // Keyboard navigation
+    // Handle keyboard navigation
     function handleKeyDown(e) {
-      if (e.key === 'ArrowRight') {
-        nextSlide();
-      } else if (e.key === 'ArrowLeft') {
-        prevSlide();
+      if (isTransitioning) return;
+      
+      if (e.key === 'ArrowRight' && currentSlide < slides.length - 1) {
+        goToSlide(currentSlide + 1);
+      } else if (e.key === 'ArrowLeft' && currentSlide > 0) {
+        goToSlide(currentSlide - 1);
       }
     }
 
-    // Initialize the app
-    function init() {
-      initSlider();
-      setupCopyButton();
-      
-      // Event listeners
-      nextButton.addEventListener('click', nextSlide);
-      prevButton.addEventListener('click', prevSlide);
-      skipButton.addEventListener('click', skipToEnd);
-      
-      sliderWrapper.addEventListener('touchstart', handleTouchStart);
-      sliderWrapper.addEventListener('touchmove', handleTouchMove);
-      sliderWrapper.addEventListener('touchend', handleTouchEnd);
-      
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
-    // Start the app
-    document.addEventListener('DOMContentLoaded', init);
+    // Initialize the slider when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', initSlider);
   </script>
 </body>
 </html>
